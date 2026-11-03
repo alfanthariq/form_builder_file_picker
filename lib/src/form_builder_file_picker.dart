@@ -203,18 +203,28 @@ class _FormBuilderFilePickerState
     FormFieldState<List<PlatformFile>?> field,
     FileType fileType,
   ) async {
-    FilePickerResult? resultList;
+    List<PlatformFile>? resultList;
 
     try {
-      resultList = await FilePicker.pickFiles(
-        type: fileType,
-        allowedExtensions: widget.allowedExtensions,
-        compressionQuality: widget.compressionQuality,
-        onFileLoading: widget.onFileLoading,
-        allowMultiple: widget.allowMultiple,
-        withData: widget.withData,
-        withReadStream: widget.withReadStream,
-      );
+      if (widget.allowMultiple) {
+        resultList = await FilePicker.pickFiles(
+          type: fileType,
+          allowedExtensions: widget.allowedExtensions,
+          compressionQuality: widget.compressionQuality,
+          onFileLoading: widget.onFileLoading,
+        );
+      } else {
+        var picked = await FilePicker.pickFile(
+          type: fileType,
+          allowedExtensions: widget.allowedExtensions,
+          compressionQuality: widget.compressionQuality,
+          onFileLoading: widget.onFileLoading,
+        );
+
+        if (picked != null) {
+          resultList = [picked];
+        }
+      }
     } on Exception catch (e) {
       debugPrint(e.toString());
     }
@@ -223,9 +233,8 @@ class _FormBuilderFilePickerState
     // setState to update our non-existent appearance.
     if (!mounted) return;
 
-    if (resultList != null) {
-      setState(() => _files = [..._files, ...resultList!.files]);
-      // TODO: Pick only remaining number
+    if (resultList?.isNotEmpty ?? false) {
+      setState(() => _files = [..._files, ...resultList!]);
       field.didChange(_files);
     }
   }
@@ -282,15 +291,10 @@ class _FormBuilderFilePickerState
                                 files[index].extension!.toLowerCase(),
                               ) &&
                               widget.previewImages)
-                          ? widget.withData
-                                ? Image.memory(
-                                    files[index].bytes!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Image.file(
-                                    File(files[index].path!),
-                                    fit: BoxFit.cover,
-                                  )
+                          ? Image.file(
+                              File(files[index].path!),
+                              fit: BoxFit.cover,
+                            )
                           : Container(
                               alignment: Alignment.center,
                               color: theme.primaryColor,
